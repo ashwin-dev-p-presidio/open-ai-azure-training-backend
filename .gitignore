@@ -1,0 +1,8 @@
+path
+path/*
+
+#env
+.env
+.env.*
+
+__pycache__/

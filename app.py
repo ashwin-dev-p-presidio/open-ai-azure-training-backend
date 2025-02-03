@@ -4,7 +4,9 @@ from flask_cors import CORS
 from PyPDF2 import PdfReader
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+from azure_search import search_azure, index_pdf_content
 import os
+import uuid
 
 app = Flask(__name__)
 CORS(app)
@@ -42,13 +44,37 @@ def ask_gpt(prompt):
         print(f"Error: {e}")
         return None
 
+@app.route('/api/upload', methods=['POST'])
+def upload():
+    
+    pdf_file = request.files['pdf']
+    pdf_text = extract_text_from_pdf(pdf_file)
+    
+    # Generate a unique ID for the document
+    doc_id = str(uuid.uuid4())
+    
+    # Index the PDF content
+    index_pdf_content(doc_id, pdf_text)
+
+    return jsonify({'message': 'PDF content indexed successfully', 'doc_id': doc_id})
+
+
 @app.route('/api/ask', methods=['POST'])
 def ask():
-    pdf_file = request.files['pdf']
-    question = request.form['question']
-    #question = "how are u?"
-    pdf_text = extract_text_from_pdf(pdf_file)
-    prompt = f"{pdf_text}\n\nQuestion: {question}"
+    
+    data = request.get_json()
+    doc_id = data.get('doc_id')
+    question = data.get('question')
+    if not doc_id or not question:
+        return jsonify({'error': 'Document ID and question are required'}), 400
+    
+    # Use Azure Search to get answers and facts
+    relevant_content  = search_azure(question,doc_id)
+
+    # Combine the relevant content into a single prompt
+    combined_content = "\n".join(relevant_content)
+    prompt = f"Based on the following content:\n{combined_content}\n\nAnswer the question: {question}"
+    
     answer = ask_gpt(prompt)
     return jsonify({'answer': answer})
 

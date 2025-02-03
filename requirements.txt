@@ -4,3 +4,5 @@ python-dotenv
 
 Flask
 flask-cors
+
+azure-search-documents

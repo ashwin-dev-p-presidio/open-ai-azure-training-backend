@@ -11,6 +11,8 @@ import uuid
 app = Flask(__name__)
 CORS(app)
 
+# Define forbidden topics
+FORBIDDEN_TOPICS = ["politics", "religion", "violence", "hate speech"]
 
 
 # Load environment variables from .env.local file
@@ -44,6 +46,12 @@ def ask_gpt(prompt):
         print(f"Error: {e}")
         return None
 
+def contains_forbidden_topics(text):
+    for topic in FORBIDDEN_TOPICS:
+        if topic.lower() in text.lower():
+            return True
+    return False
+
 @app.route('/api/upload', methods=['POST'])
 def upload():
     
@@ -76,6 +84,11 @@ def ask():
     prompt = f"Based on the following content:\n{combined_content}\n\nAnswer the question: {question}"
     
     answer = ask_gpt(prompt)
+
+    # Check for forbidden topics
+    if contains_forbidden_topics(answer):
+        answer = "I'm sorry, but I cannot discuss this topic."
+        
     return jsonify({'answer': answer})
 
 if __name__ == '__main__':
